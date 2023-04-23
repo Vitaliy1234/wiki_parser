@@ -41,7 +41,7 @@ def get_graph(root_link="Анализ данных", last_link="Философи
               visited=[], counter=0, depth=0,
               all_paths=[], current_path=[]):
     if depth >= 5:
-        current_path.clean()
+        current_path.clear()
 
     if counter < 1:
         links = get_all(root_link)
