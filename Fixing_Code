@@ -1,0 +1,66 @@
+import re
+from urllib.error import URLError, HTTPError
+from urllib.parse import quote, unquote
+from urllib.request import urlopen
+wiki_url = 'https://ru.wikipedia.org/wiki/'
+
+
+def get_code(section_name):
+    try:
+        with urlopen(wiki_url + quote(section_name)) as page:
+            html_code = page.read().decode('utf-8', errors='ignore')
+    except (URLError, HTTPError):
+        print("URLError or HTTPError. \nYou have made an error. Try again.")
+        return None
+    return html_code
+
+
+def get_text(html_code):
+    starts = re.search(r'<div id="mw-content-text"', html_code).start()
+    finishes = re.search(r'<!--esi <esi:include src="/esitest-fa8a495983347898/content" /> -->', html_code).start()
+    return starts, finishes
+
+
+def get_links(page, begin, end):
+    expr = re.compile(r'[\'|"]/wiki/([^\'|"|#|:]*)[\'|"]', re.IGNORECASE)
+    lines = re.findall(expr, page[begin:end])
+    all_links = []
+    for link in lines:
+        all_links.append(unquote(link))
+    return all_links
+
+
+def get_all(root_link="Анализ данных"):
+    content = get_code(root_link)
+    start, finish = get_text(content)
+    links = get_links(content, start, finish)
+    return links
+
+
+def get_graph(root_link="Анализ данных", last_link="Философия",
+              visited=[], counter=0, depth=0,
+              all_paths=[], current_path=[]):
+    if depth >= 5:
+        current_path.clean()
+
+    if counter < 1:
+        links = get_all(root_link)
+        for current_link in links:
+            if current_link == last_link:
+                counter += 1
+                plug = [current_link]
+                all_paths.append(current_path + plug)
+                # depth -= 1
+            elif (current_link == links[-1]) and (current_link in visited):
+                break
+            elif current_link in visited:
+                continue
+            else:
+                visited.append(current_link)
+                current_path.append(current_link)
+                all_paths = get_graph(current_link, last_link, visited, counter, depth + 1, all_paths, current_path)
+    return all_paths
+
+# links = get_all()
+a = get_graph()
+print(a)
