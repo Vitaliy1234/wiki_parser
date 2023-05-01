@@ -1,0 +1,81 @@
+import re
+from urllib.error import URLError, HTTPError
+from urllib.parse import quote, unquote
+from urllib.request import urlopen
+
+wiki_url = 'https://ru.wikipedia.org/wiki/'
+
+
+def get_code(section_name):
+    try:
+        with urlopen(wiki_url + quote(section_name)) as page:
+            html_code = page.read().decode('utf-8', errors='ignore')
+    except (URLError, HTTPError):
+        print("URLError or HTTPError. \nYou have made an error. Try again.")
+        return None
+    return html_code
+
+
+def get_text(html_code):
+    starts = re.search(r'<div id="mw-content-text"', html_code).start()
+    finishes = re.search(r'<!--esi <esi:include src="/esitest-fa8a495983347898/content" /> -->', html_code).start()
+    return starts, finishes
+
+
+def get_links(page, begin, end):
+    expr = re.compile(r'[\'|"]/wiki/([^\'|"|#|:]*)[\'|"]', re.IGNORECASE)
+    lines = re.findall(expr, page[begin:end])
+    all_links = []
+    for link in lines:
+        all_links.append(unquote(link))
+    return all_links
+
+
+def get_all(root_link="Анализ данных"):
+    content = get_code(root_link)
+    start, finish = get_text(content)
+    links = get_links(content, start, finish)
+    return links
+
+
+def get_graph(root_link="Анализ данных", last_link="Философия",
+              visited=[], depth=1, counter=0,
+              all_paths=[], current_path=["Анализ данных"]):
+    if counter < 8:
+        if depth < 9:
+            links = get_all(root_link)
+            if depth == 8:
+                if last_link in links:
+                    counter += 1
+                    all_paths.append(current_path + [last_link])
+                return all_paths, counter
+
+            else:
+                for ind in range(len(links) - 1):
+                    if links[ind] == last_link:
+                        all_paths.append(current_path + [last_link])
+                        counter += 1
+                        continue
+
+                    elif links[ind] in visited:
+                        continue
+
+                    elif ind == (len(links) - 1):
+                        current_path.pop(-1)
+                        break
+                    else:
+                        visited.append(links[ind])
+                        current_path.append(links[ind])
+                        all_paths, counter = get_graph(links[ind], last_link,
+                                                                     visited, depth + 1, counter,
+                                                                     all_paths, current_path)
+                        current_path.pop(-1)
+                return all_paths, counter
+        else:
+            return all_paths, counter
+    else:
+        return all_paths, counter
+
+
+a = get_graph()
+print(a[0])
